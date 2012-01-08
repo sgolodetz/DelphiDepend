@@ -88,7 +88,7 @@ class Program
 	{
 		if(args.Length != 4)
 		{
-			Console.WriteLine("Usage: DelphiDepend {+|-}e {+|-}m {+|-}n path");
+			Console.WriteLine("Usage: DelphiDepend {+|-}e {+|-}m {+|-}n <path>");
 			return;
 		}
 
