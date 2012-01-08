@@ -43,25 +43,28 @@ class Program
 		Match interfaceMatch = Regex.Match(source, @"\binterface\b", RegexOptions.IgnoreCase);
 		Match implementationMatch = Regex.Match(source, @"\bimplementation\b", RegexOptions.IgnoreCase);
 	
-		string unitName = unitMatch.Groups["unitName"].ToString();
-		string interfaceSection = source.Substring(interfaceMatch.Index, implementationMatch.Index - interfaceMatch.Index);
-		string implementationSection = source.Substring(implementationMatch.Index);
-
-		Match interfaceUsesMatch = Regex.Match(interfaceSection, @"\buses\b([^;]*);", RegexOptions.IgnoreCase);
-		foreach(string to in interfaceUsesMatch.Groups[1].ToString().Split(',').Select(s => s.Trim()))
+		string from = unitMatch.Groups["unitName"].ToString();
+		if(from != "")
 		{
-			if(to != "")
+			string interfaceSection = source.Substring(interfaceMatch.Index, implementationMatch.Index - interfaceMatch.Index);
+			string implementationSection = source.Substring(implementationMatch.Index);
+
+			Match interfaceUsesMatch = Regex.Match(interfaceSection, @"\buses\b([^;]*);", RegexOptions.IgnoreCase);
+			foreach(string to in interfaceUsesMatch.Groups[1].ToString().Split(',').Select(s => s.Trim()))
 			{
-				yield return new Dependency { From = unitName, To = to, Type = DependencyType.INTERFACE };
+				if(to != "")
+				{
+					yield return new Dependency { From = from, To = to, Type = DependencyType.INTERFACE };
+				}
 			}
-		}
 
-		Match implementationUsesMatch = Regex.Match(implementationSection, @"\buses\b([^;]*);", RegexOptions.IgnoreCase);
-		foreach(string to in implementationUsesMatch.Groups[1].ToString().Split(',').Select(s => s.Trim()))
-		{
-			if(to != "")
+			Match implementationUsesMatch = Regex.Match(implementationSection, @"\buses\b([^;]*);", RegexOptions.IgnoreCase);
+			foreach(string to in implementationUsesMatch.Groups[1].ToString().Split(',').Select(s => s.Trim()))
 			{
-				yield return new Dependency { From = unitName, To = to, Type = DependencyType.IMPLEMENTATION };
+				if(to != "")
+				{
+					yield return new Dependency { From = from, To = to, Type = DependencyType.IMPLEMENTATION };
+				}
 			}
 		}
 	}
@@ -70,6 +73,7 @@ class Program
 	{
 		string result;
 		result = Regex.Replace(source, @"\(\*.*\*\)", "");
+		result = Regex.Replace(source, @"{[^}]*}", "");
 		result = Regex.Replace(result, @" *//.*\n", "\n");
 		return result;
 	}
@@ -82,9 +86,9 @@ class Program
 
 	static void Main(string[] args)
 	{
-		if(args.Length != 1 && args.Length != 2)
+		if(args.Length != 4)
 		{
-			Console.WriteLine("Usage: DelphiDepend path [-e]");
+			Console.WriteLine("Usage: DelphiDepend {+|-}e {+|-}m {+|-}n path");
 			return;
 		}
 
@@ -93,10 +97,10 @@ class Program
 			Console.WriteLine("digraph");
 			Console.WriteLine("{");
 
-			IEnumerable<Dependency> dependencies = AnalyseDependenciesInPath(Path.GetFullPath(args[0]));
+			IEnumerable<Dependency> dependencies = AnalyseDependenciesInPath(Path.GetFullPath(args[3]));
 
 			// Remove external dependencies if desired.
-			if(args.Length == 2 && args[1] == "-e")
+			if(args[0] == "-e")
 			{
 				dependencies = RemoveExternalDependencies(dependencies);
 			}
@@ -105,11 +109,17 @@ class Program
 			{
 				switch(d.Type)
 				{
-					case DependencyType.INTERFACE:
-						Console.WriteLine("\t" + d.From + " -> " + d.To + " [color=green];");
-						break;
 					case DependencyType.IMPLEMENTATION:
-						Console.WriteLine("\t" + d.From + " -> " + d.To + " [color=red];");
+						if(args[1] == "+m")
+						{
+							Console.WriteLine("\t" + d.From + " -> " + d.To + " [color=red];");
+						}
+						break;
+					case DependencyType.INTERFACE:
+						if(args[2] == "+n")
+						{
+							Console.WriteLine("\t" + d.From + " -> " + d.To + " [color=green];");
+						}
 						break;
 				}
 			}
